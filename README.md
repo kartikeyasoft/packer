@@ -8,7 +8,6 @@
 5.  **Step 3: Prepare Packer Variables**
 6.  **Step 4: Set Up the Jenkins Pipeline**
 7.  **Step 5: Run the Jenkins Job**
-8.  **Troubleshooting & Best Practices**
 
 ---
 
