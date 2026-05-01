@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Build AMI') {
             steps {
-                dir('PACKER/packer') {
+                dir('packer') {  // Changed from 'PACKER/packer' to 'packer'
                     sh '''
                         packer init ami.pkr.hcl
                         packer validate ami.pkr.hcl
