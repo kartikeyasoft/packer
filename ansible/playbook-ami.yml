@@ -2,18 +2,13 @@
 - name: Install packages on Ubuntu AMI
   hosts: all
   become: yes
-  gather_facts: yes
 
   tasks:
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
+    - name: Update apt
+      apt: update_cache=yes
 
     - name: Fix broken dependencies
-      apt:
-        fix_broken: yes
-      # Replace the command module with apt module
+      command: apt-get --fix-broken install -y
 
     - name: Install basic packages
       apt:
@@ -25,33 +20,15 @@
         - unzip
         - net-tools
 
-    - name: Install jq - Method 1 (try apt first)
-      apt:
-        name: jq
-        state: present
-      register: jq_apt_install
-      ignore_errors: yes
-
-    - name: Install jq - Method 2 (from binary if apt fails)
-      get_url:
-        url: https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
-        dest: /usr/local/bin/jq
-        mode: '0755'
-      when: jq_apt_install is failed or jq_apt_install.failed
-
-    - name: Verify jq installation
-      command: jq --version
-      register: jq_version
-      changed_when: false
-
-    - name: Display jq version
-      debug:
-        msg: "Installed jq version: {{ jq_version.stdout }}"
+    - name: Install jq
+      shell: sudo apt-get install -y jq
+      args:
+        warn: no
 
     - name: Install MySQL client
-      apt:
-        name: mysql-client
-        state: present
+      shell: sudo apt-get install -y mysql-client
+      args:
+        warn: no
       ignore_errors: yes
 
     - name: Install OpenJDK 17 JDK
@@ -69,13 +46,8 @@
       debug:
         msg: "{{ java_version.stderr }}"
 
-    - name: Install AWS CLI v2
-      apt:
-        name: unzip
-        state: present
-      # Ensure unzip is installed first
 
-    - name: Download and install AWS CLI v2
+    - name: Install AWS CLI v2
       shell: |
         cd /tmp
         curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -84,13 +56,3 @@
         rm -rf aws awscliv2.zip
       args:
         creates: /usr/local/bin/aws
-      register: awscli_install
-
-    - name: Verify AWS CLI installation
-      command: aws --version
-      register: aws_version
-      changed_when: false
-
-    - name: Display AWS CLI version
-      debug:
-        msg: "{{ aws_version.stdout }}"
