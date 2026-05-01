@@ -19,7 +19,14 @@
         - wget
         - unzip
         - net-tools
-        - jq
+
+    - name: Force update and install jq
+      become: true
+      apt:
+        name: jq
+        state: present
+        update_cache: yes
+        force_apt_get: yes
 
     - name: Install MySQL client
       shell: sudo apt-get install -y mysql-client
