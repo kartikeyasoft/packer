@@ -50,12 +50,19 @@ source "amazon-ebs" "ami" {
 build {
   sources = ["source.amazon-ebs.ami"]
 
-  provisioner "ansible" {
-    playbook_file = "./ansible/playbook-ami.yml"
-    user          = "ubuntu"
-    extra_arguments = [
-      "--verbose",
-      "--ssh-extra-args=-o StrictHostKeyChecking=no"
-    ]
-  }
+provisioner "ansible" {
+  playbook_file   = "./ansible/playbook-ami.yml"
+  user            = "ubuntu"
+  use_proxy       = false  # Disables the internal Packer proxy
+  
+  extra_arguments = [
+    "--scp-extra-args", "'-O'", # Fixes transfer failures with newer SSH versions
+    "--ssh-extra-args", "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  ]
+  
+  ansible_env_vars = [
+    "ANSIBLE_REMOTE_TEMP=/tmp" # Alternative temp directory to avoid home dir issues
+  ]
 }
+}
+
