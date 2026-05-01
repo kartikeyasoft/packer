@@ -10,12 +10,13 @@ pipeline {
     stages {
         stage('Build AMI') {
             steps {
-                sh '''
-                    # Run from repository root (where both packer/ and ansible/ directories exist)
+                sh """
                     packer init packer/ami.pkr.hcl
                     packer validate packer/ami.pkr.hcl
-                    packer build packer/ami.pkr.hcl
-                '''
+                    packer build \
+                        -var 'build_number=${BUILD_NUMBER}' \
+                        packer/ami.pkr.hcl
+                """
             }
         }
     }
