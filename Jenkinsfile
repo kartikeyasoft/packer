@@ -4,19 +4,18 @@ pipeline {
     environment {
         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')      
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')  
-        AWS_DEFAULT_REGION = 'us-east-1'        
+        AWS_DEFAULT_REGION = 'us-east-1'
     }  
 
     stages {
         stage('Build AMI') {
             steps {
-                dir('packer') {  // Changed from 'PACKER/packer' to 'packer'
-                    sh '''
-                        packer init ami.pkr.hcl
-                        packer validate ami.pkr.hcl
-                        packer build ami.pkr.hcl
-                    '''
-                }
+                sh '''
+                    # Run from repository root (where both packer/ and ansible/ directories exist)
+                    packer init packer/ami.pkr.hcl
+                    packer validate packer/ami.pkr.hcl
+                    packer build packer/ami.pkr.hcl
+                '''
             }
         }
     }
