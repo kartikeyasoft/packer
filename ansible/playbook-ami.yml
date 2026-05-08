@@ -2,60 +2,103 @@
 - name: Install packages on Ubuntu AMI
   hosts: all
   become: yes
+  gather_facts: yes
 
   tasks:
-    - name: Update apt
-      apt: update_cache=yes
+    - name: Fix APT repository issues
+      block:
+        - name: Clean APT cache
+          command: apt-get clean
+          become: yes
+
+        - name: Remove corrupt lists
+          file:
+            path: /var/lib/apt/lists
+            state: absent
+          become: yes
+
+        - name: Recreate lists directory
+          file:
+            path: /var/lib/apt/lists
+            state: directory
+            mode: '0755'
+          become: yes
+
+        - name: Update with fix-missing
+          command: apt-get update --fix-missing
+          become: yes
 
     - name: Fix broken dependencies
       command: apt-get --fix-broken install -y
+      become: yes
 
-    - name: Install basic packages
-      apt:
-        name: "{{ item }}"
+    - name: Enable universe repository
+      apt_repository:
+        repo: "deb http://archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe"
         state: present
-      loop:
-        - curl
-        - wget
-        - unzip
-        - net-tools
+      become: yes
 
-    - name: Force update and install jq
-      become: true
+    - name: Update apt again
       apt:
-        name: jq
-        state: present
         update_cache: yes
         force_apt_get: yes
+      become: yes
 
-    - name: Install MySQL client
-      shell: sudo apt-get install -y mysql-client
-      args:
-        warn: no
-      ignore_errors: yes
-
-    - name: Install OpenJDK 17 JDK
+    - name: Install all packages together
       apt:
-        name: openjdk-17-jdk
+        name:
+          - curl
+          - wget
+          - unzip
+          - net-tools
+          - jq
+          - mysql-client
+          - openjdk-17-jdk
         state: present
-      register: java_install
+        force_apt_get: yes
+        install_recommends: no
+      become: yes
+      register: install_result
+      until: install_result is success
+      retries: 3
+      delay: 10
 
     - name: Verify Java installation
       command: java -version
       register: java_version
       changed_when: false
+      become: yes
 
     - name: Display Java version
       debug:
-        msg: "{{ java_version.stderr }}"
-
+        msg: "{{ java_version.stderr_lines[0] }}"
 
     - name: Install AWS CLI v2
-      shell: |
-        cd /tmp
-        curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip -q awscliv2.zip
-        sudo ./aws/install
-        rm -rf aws awscliv2.zip
-      args:
-        creates: /usr/local/bin/aws
+      block:
+        - name: Download AWS CLI
+          get_url:
+            url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+            dest: /tmp/awscliv2.zip
+          become: yes
+
+        - name: Extract AWS CLI
+          unarchive:
+            src: /tmp/awscliv2.zip
+            dest: /tmp
+            remote_src: yes
+          become: yes
+
+        - name: Install AWS CLI
+          command: /tmp/aws/install
+          become: yes
+          args:
+            creates: /usr/local/bin/aws
+
+        - name: Clean up
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /tmp/awscliv2.zip
+            - /tmp/aws
+          become: yes
