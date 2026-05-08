@@ -1,8 +1,8 @@
 packer {
   required_plugins {
-    ansible = {
-      version = "~> 1"
-      source  = "github.com/hashicorp/ansible"
+    amazon = {
+      version = ">= 1.2.8"
+      source  = "github.com/hashicorp/amazon"
     }
   }
 }
@@ -17,11 +17,6 @@ variable "service_version" {
   default = "1.0.0"
 }
 
-variable "build_number" {
-  type    = string
-  default = ""
-}
-
 variable "source_ami" {
   type    = string
   default = "ami-053b0d53c279acc90"
@@ -32,14 +27,8 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-locals {
-  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
-  # Use build number if provided, otherwise use timestamp
-  build_id = var.build_number != "" ? var.build_number : local.timestamp
-}
-
 source "amazon-ebs" "ami" {
-  ami_name      = "${var.service_name}-${var.service_version}-${local.build_id}"
+  ami_name      = "${var.service_name}-${var.service_version}"
   instance_type = "t3.micro"
   region        = var.aws_region
   source_ami    = var.source_ami
@@ -50,19 +39,12 @@ source "amazon-ebs" "ami" {
 build {
   sources = ["source.amazon-ebs.ami"]
 
-provisioner "ansible" {
-  playbook_file   = "./ansible/playbook-ami.yml"
-  user            = "ubuntu"
-  use_proxy       = false  # Disables the internal Packer proxy
-  
-  extra_arguments = [
-    "--scp-extra-args", "'-O'", # Fixes transfer failures with newer SSH versions
-    "--ssh-extra-args", "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-  ]
-  
-  ansible_env_vars = [
-    "ANSIBLE_REMOTE_TEMP=/tmp" # Alternative temp directory to avoid home dir issues
-  ]
+  provisioner "ansible" {
+    playbook_file = "./ansible/playbook-ami.yml"
+    user          = "ubuntu"
+    extra_arguments = [
+      "--verbose",
+      "--ssh-extra-args=-o StrictHostKeyChecking=no"
+    ]
+  }
 }
-}
-
